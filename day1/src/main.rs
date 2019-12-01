@@ -20,7 +20,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn fuel(mass: f64) -> f64 {
-    f64::floor(mass / 3.0) - 2.0
+    let requirement = f64::floor(mass / 3.0) - 2.0;
+
+    if requirement > 0.0 {
+        requirement + fuel(requirement)
+    } else {
+        0.0
+    }
 }
 
 #[cfg(test)]
@@ -29,21 +35,16 @@ mod tests {
 
     #[test]
     fn fuel_example_1() {
-        assert_eq!(fuel(12.0) as i32, 2);
-    }
-
-    #[test]
-    fn fuel_example_2() {
         assert_eq!(fuel(14.0) as i32, 2);
     }
 
     #[test]
-    fn fuel_example_3() {
-        assert_eq!(fuel(1969.0) as i32, 654);
+    fn fuel_example_2() {
+        assert_eq!(fuel(1969.0) as i32, 966);
     }
 
     #[test]
-    fn fuel_example_4() {
-        assert_eq!(fuel(100_756.0) as i32, 33583);
+    fn fuel_example_3() {
+        assert_eq!(fuel(100_756.0) as i32, 50346);
     }
 }
