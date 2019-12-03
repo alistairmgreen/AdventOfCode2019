@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::io;
@@ -10,9 +10,13 @@ fn main() -> Result<(), Box<dyn Error>>{
     let file = File::open("puzzle_input.txt")?;
     let reader = io::BufReader::new(file);
     
-    let lines = reader.lines().collect::<io::Result<Vec<String>>>()?;
+    let mut wires = Vec::new();
+    for line in reader.lines() {
+            let line = line?;
+            wires.push(parse_wire(&line)?);
+    }
 
-    match solve_part1(&lines)? {
+    match solve_part1(&wires) {
         Some(distance) => {
             println!("Manhattan distance to closest intersection = {}", distance);
         }
@@ -24,38 +28,42 @@ fn main() -> Result<(), Box<dyn Error>>{
    Ok(())
 }
 
-fn solve_part1(lines: &[String]) -> Result<Option<i32>, StepParseError> {
-    let mut wires = HashMap::new();
+fn parse_wire(wire: &str) -> Result<Vec<WireSegment>, StepParseError> {
+    wire.split(',')
+        .map(|segment| segment.parse())
+        .collect()
+}
 
-    for line in lines {
-        let steps = line.split(',')
-        .map(|step| step.parse::<Step>())
-        .collect::<Result<Vec<Step>, StepParseError>>()?;
+fn solve_part1(wires: &[Vec<WireSegment>]) -> Option<i32> {
+    let mut grid = HashMap::new();
 
-        let visited = visited_points(&steps);
+    for wire in wires {
+        let visited = visited_points(&wire);
 
-        for position in visited.into_iter() {
-            *wires.entry(position).or_insert(0) += 1;
+        for (position, _) in visited {
+            *grid.entry(position).or_insert(0) += 1;
         }
     }
 
-    let closest_intersection = wires.into_iter()
+    let closest_intersection = grid.into_iter()
         .filter_map(|(position, count)|  if count > 1 { Some(position) } else { None })
         .min_by_key(|position| position.manhattan());
 
-    Ok(closest_intersection.map(|position| position.manhattan()))
+    closest_intersection.map(|position| position.manhattan())
 }
 
-fn visited_points(steps: &[Step]) -> HashSet<Point> {
-    let mut visited = HashSet::new();
-
+fn visited_points(segments: &[WireSegment]) -> HashMap<Point, u32> {
+    let mut visited = HashMap::new();
     let mut position = Point { x: 0, y: 0 };
+    let mut steps = 0;
 
-    for step in steps {
-        let displacement = step.direction.displacement();
-        for _ in 0..step.distance {
+    for segment in segments {
+        let displacement = segment.direction.displacement();
+        for _ in 0..segment.distance {
+            steps += 1;
             position += displacement;
-            visited.insert(position.clone());
+            visited.entry(position.clone())
+                .or_insert(steps);
         }
     }
 
@@ -69,30 +77,30 @@ mod tests {
     #[test]
     fn part1_example1() {
         let wires = vec![
-            String::from("R8,U5,L5,D3"),
-            String::from("U7,R6,D4,L4")
+            parse_wire("R8,U5,L5,D3").unwrap(),
+            parse_wire("U7,R6,D4,L4").unwrap()
         ];
 
-        assert_eq!(solve_part1(&wires).unwrap(), Some(6))
+        assert_eq!(solve_part1(&wires), Some(6))
     }
 
     #[test]
     fn part1_example2() {
         let wires = vec![
-            String::from("R75,D30,R83,U83,L12,D49,R71,U7,L7"),
-            String::from("U62,R66,U55,R34,D71,R55,D58,R83")
+            parse_wire("R75,D30,R83,U83,L12,D49,R71,U7,L7").unwrap(),
+            parse_wire("U62,R66,U55,R34,D71,R55,D58,R83").unwrap()
         ];
 
-        assert_eq!(solve_part1(&wires).unwrap(), Some(159))
+        assert_eq!(solve_part1(&wires), Some(159))
     }
 
     #[test]
     fn part1_example3() {
         let wires = vec![
-            String::from("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51"),
-            String::from("U98,R91,D20,R16,D67,R40,U7,R15,U6,R7")
+            parse_wire("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51").unwrap(),
+            parse_wire("U98,R91,D20,R16,D67,R40,U7,R15,U6,R7").unwrap()
         ];
 
-        assert_eq!(solve_part1(&wires).unwrap(), Some(135))
+        assert_eq!(solve_part1(&wires), Some(135))
     }
 }

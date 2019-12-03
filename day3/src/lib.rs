@@ -64,18 +64,18 @@ impl FromStr for Direction {
     }
 }
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Step {
+pub struct WireSegment {
     pub direction: Direction,
     pub distance: i32,
 }
 
-impl FromStr for Step {
+impl FromStr for WireSegment {
     type Err = StepParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let direction: Direction = s.parse()?;
         let distance: i32 = s.chars().skip(1).collect::<String>().parse()?;
         
-        Ok(Step { direction, distance })
+        Ok(WireSegment { direction, distance })
     }
 }
 
@@ -84,8 +84,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_step() {
-        let s: Step = "R995".parse().unwrap();
-        assert_eq!(s, Step { direction: Direction::Right, distance: 995 });
+    fn parse_wire_segment() {
+        let s: WireSegment = "R995".parse().unwrap();
+        assert_eq!(s, WireSegment { direction: Direction::Right, distance: 995 });
     }
 }
