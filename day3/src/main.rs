@@ -25,6 +25,15 @@ fn main() -> Result<(), Box<dyn Error>>{
         }
     }
 
+    match solve_part2(&wires) {
+        Some(steps) => {
+            println!("Minimum number of steps to an intersection = {}", steps);
+        }
+        None => {
+            println!("Wires don't cross.");
+        }
+    }
+
    Ok(())
 }
 
@@ -50,6 +59,22 @@ fn solve_part1(wires: &[Vec<WireSegment>]) -> Option<i32> {
         .min_by_key(|position| position.manhattan());
 
     closest_intersection.map(|position| position.manhattan())
+}
+
+fn solve_part2(wires: &[Vec<WireSegment>]) -> Option<u32> {
+    let mut grid = HashMap::new();
+
+    for wire in wires {
+        let visited = visited_points(&wire);
+
+        for (position, steps) in visited {
+            grid.entry(position).or_insert_with(|| {Vec::new()}).push(steps);
+        }
+    }
+
+    grid.into_iter()
+        .filter_map(|(_, steps)| if steps.len() > 1 { Some(steps.into_iter().sum()) } else { None })
+        .min()
 }
 
 fn visited_points(segments: &[WireSegment]) -> HashMap<Point, u32> {
@@ -102,5 +127,35 @@ mod tests {
         ];
 
         assert_eq!(solve_part1(&wires), Some(135))
+    }
+
+    #[test]
+    fn part2_example1() {
+        let wires = vec![
+            parse_wire("R8,U5,L5,D3").unwrap(),
+            parse_wire("U7,R6,D4,L4").unwrap()
+        ];
+
+        assert_eq!(solve_part2(&wires), Some(30))
+    }
+
+    #[test]
+    fn part2_example2() {
+        let wires = vec![
+            parse_wire("R75,D30,R83,U83,L12,D49,R71,U7,L7").unwrap(),
+            parse_wire("U62,R66,U55,R34,D71,R55,D58,R83").unwrap()
+        ];
+
+        assert_eq!(solve_part2(&wires), Some(610))
+    }
+
+    #[test]
+    fn part2_example3() {
+        let wires = vec![
+            parse_wire("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51").unwrap(),
+            parse_wire("U98,R91,D20,R16,D67,R40,U7,R15,U6,R7").unwrap()
+        ];
+
+        assert_eq!(solve_part2(&wires), Some(410))
     }
 }
