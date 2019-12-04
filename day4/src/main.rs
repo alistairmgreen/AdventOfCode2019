@@ -13,10 +13,8 @@ fn main() {
     */
 
     let mut all_solutions = Vec::new();
-    
     let mut num_codes = continuations(&[2, 4, 8], 6, &mut all_solutions)
         + continuations(&[2, 4, 9], 6, &mut all_solutions);
-    
     for n in 5..=9 {
         num_codes += continuations(&[2, n], 6, &mut all_solutions);
     }
@@ -26,12 +24,16 @@ fn main() {
     }
 
     println!("There are {} possible codes.", num_codes);
-    
-    let part2 = all_solutions.iter()
+
+    let part2 = all_solutions
+        .iter()
         .filter(|code| has_digit_appearing_exactly_twice(code))
         .count();
-    
-    println!("{} of these have a digit that appears exactly twice.", part2);
+
+    println!(
+        "{} of these have a digit that appears exactly twice.",
+        part2
+    );
 }
 
 fn has_repeats(code: &[u8]) -> bool {
@@ -58,7 +60,7 @@ fn continuations(code: &[u8], length: usize, all_solutions: &mut Vec<Vec<u8>>) -
     let last_digit = code[digit_count - 1];
 
     // Are we choosing the last digit?
-    if digit_count == length - 1 { //&& !has_repeats(code) {
+    if digit_count == length - 1 {
         if has_repeats(code) {
             // Last digit is greater than or equal to penultimate
             for next_digit in last_digit..=9 {
@@ -79,7 +81,6 @@ fn continuations(code: &[u8], length: usize, all_solutions: &mut Vec<Vec<u8>>) -
     }
 
     let mut possibilities = 0;
-    
     for next_digit in last_digit..=9 {
         let mut next_code = code.to_owned();
         next_code.push(next_digit);
