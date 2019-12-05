@@ -3,10 +3,13 @@ pub mod instructions;
 pub use crate::errors::ProgramError;
 use instructions::Instruction;
 
-pub fn run(program: &mut [i32]) -> Result<(), ProgramError> {
+pub fn run(program: &mut [i32], input: i32) -> Result<(), ProgramError> {
     let mut instruction_ptr = 0;
     let program_length = program.len();
+    let mut jumped: bool;
+
     while instruction_ptr < program_length {
+        jumped = false;
         let instruction = Instruction::read(program, instruction_ptr)?;
 
         match instruction {
@@ -17,17 +20,45 @@ pub fn run(program: &mut [i32]) -> Result<(), ProgramError> {
                 program[out] = a.get_value(program) * b.get_value(program);
             }
             Instruction::Input(destination) => {
-                program[destination] = 1;
+                program[destination] = input;
             }
             Instruction::Output(value) => {
                 println!("{}", value.get_value(program));
+            }
+            Instruction::JumpIfFalse(value, destination) => {
+                if value.get_value(program) == 0 {
+                    instruction_ptr = destination.get_value(program) as usize;
+                    jumped = true;
+                }
+            }
+            Instruction::JumpIfTrue(value, destination) => {
+                if value.get_value(program) != 0 {
+                    instruction_ptr = destination.get_value(program) as usize;
+                    jumped = true;
+                }
+            }
+            Instruction::LessThan(a, b, destination) => {
+                program[destination] = if a.get_value(program) < b.get_value(program) {
+                    1
+                } else {
+                    0
+                };
+            }
+            Instruction::Equals(a, b, destination) => {
+                program[destination] = if a.get_value(program) == b.get_value(program) {
+                    1
+                } else {
+                    0
+                };
             }
             Instruction::Halt => {
                 break;
             }
         }
 
-        instruction_ptr += instruction.arity();
+        if !jumped {
+            instruction_ptr += instruction.arity();
+        }
     }
 
     Ok(())

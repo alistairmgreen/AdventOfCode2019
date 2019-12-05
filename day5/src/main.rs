@@ -40,7 +40,13 @@ fn main() {
         1002, 223, 2, 223, 1006, 224, 674, 1001, 223, 1, 223, 4, 223, 99, 226,
     ];
 
-    if let Err(e) = run(&mut program) {
+    println!("--- Part 1 ---");
+    if let Err(e) = run(&mut program.clone(), 1) {
+        eprintln!("{:?}", e);
+    }
+
+    println!("--- Part 2 ---");
+    if let Err(e) = run(&mut program, 5) {
         eprintln!("{:?}", e);
     }
 }

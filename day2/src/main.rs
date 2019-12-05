@@ -16,7 +16,7 @@ fn main() {
             modified_program[1] = noun;
             modified_program[2] = verb;
 
-            let result = run(&mut modified_program);
+            let result = run(&mut modified_program, 0);
 
             match result {
                 Ok(()) => {
