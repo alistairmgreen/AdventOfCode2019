@@ -1,5 +1,4 @@
-use std::error::Error;
-use std::fmt;
+use intcode::*;
 
 fn main() {
     let program = vec![
@@ -13,11 +12,15 @@ fn main() {
 
     'noun: for noun in 0..=99 {
         for verb in 0..=99 {
-            let result = run(&program, noun, verb);
+            let mut modified_program = program.clone();
+            modified_program[1] = noun;
+            modified_program[2] = verb;
+
+            let result = run(&mut modified_program);
 
             match result {
-                Ok(output) => {
-                    if output == 19_690_720 {
+                Ok(()) => {
+                    if modified_program[0] == 19_690_720 {
                         println!("Noun = {}, verb = {}, puzzle solution = {}", noun, verb, 100 * noun + verb);
                         break 'noun;
                     }
@@ -30,100 +33,3 @@ fn main() {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ProgramError {
-    UnknownOpcode(usize),
-    IndexOutOfRange(usize),
-}
-
-impl fmt::Display for ProgramError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ProgramError::UnknownOpcode(code) => write!(f, "Program alarm: {}", code),
-            ProgramError::IndexOutOfRange(index) => write!(f, "Index out of range: {}", index),
-        }
-    }
-}
-
-impl Error for ProgramError {}
-
-fn run(original_program: &[usize], noun: usize, verb: usize) -> Result<usize, ProgramError> {
-    let mut program: Vec<usize> = original_program.to_owned();
-    program[1] = noun;
-    program[2] = verb;
-
-    for index in (0..(program.len() - 4)).step_by(4) {
-        let opcode = program[index];
-        let left_index = program[index + 1];
-
-        let left_operand = *program
-            .get(left_index)
-            .ok_or(ProgramError::IndexOutOfRange(left_index))?;
-
-        let right_index = program[index + 2];
-
-        let right_operand = *program
-            .get(right_index)
-            .ok_or(ProgramError::IndexOutOfRange(right_index))?;
-
-        let output_index = program[index + 3];
-
-        match opcode {
-            1 => {
-                program[output_index] = left_operand + right_operand;
-            }
-            2 => {
-                program[output_index] = left_operand * right_operand;
-            }
-            99 => {
-                // End of program
-                return Ok(program[0]);
-            }
-            unknown => {
-                return Err(ProgramError::UnknownOpcode(unknown));
-            }
-        }
-    }
-
-    Ok(program[0])
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn example1() {
-        let program = vec![1, 9, 10, 3, 2, 3, 11, 0, 99, 30, 40, 50];
-        let result = run(&program, 9, 10);
-        assert_eq!(result, Ok(3500));
-    }
-
-    #[test]
-    fn example2() {
-        let program = vec![1, 0, 0, 0, 99];
-        let result = run(&program, 0, 0);
-        assert_eq!(result, Ok(2));
-    }
-
-    #[test]
-    fn example3() {
-        let program = vec![2, 3, 0, 3, 99];
-        let result = run(&program, 3, 0);
-        assert_eq!(result, Ok(2));
-    }
-
-    #[test]
-    fn example4() {
-        let program = vec![2, 4, 4, 5, 99, 0];
-        let result = run(&program, 4, 4);
-        assert_eq!(result, Ok(2));
-    }
-
-    #[test]
-    fn example5() {
-        let program = vec![1, 1, 1, 4, 99, 5, 6, 0, 99];
-        let result = run(&program, 1, 1);
-        assert_eq!(result, Ok(30));
-    }
-}
