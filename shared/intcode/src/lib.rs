@@ -1,38 +1,33 @@
 pub mod errors;
+pub mod instructions;
 pub use crate::errors::ProgramError;
+use instructions::Instruction;
 
-pub fn run(program: &mut [usize]) -> Result<(), ProgramError> {
-    for index in (0..(program.len() - 4)).step_by(4) {
-        let opcode = program[index];
-        let left_index = program[index + 1];
+pub fn run(program: &mut [i32]) -> Result<(), ProgramError> {
+    let mut instruction_ptr = 0;
+    let program_length = program.len();
+    while instruction_ptr < program_length {
+        let instruction = Instruction::read(program, instruction_ptr)?;
 
-        let left_operand = *program
-            .get(left_index)
-            .ok_or(ProgramError::IndexOutOfRange(left_index))?;
-
-        let right_index = program[index + 2];
-
-        let right_operand = *program
-            .get(right_index)
-            .ok_or(ProgramError::IndexOutOfRange(right_index))?;
-
-        let output_index = program[index + 3];
-
-        match opcode {
-            1 => {
-                program[output_index] = left_operand + right_operand;
+        match instruction {
+            Instruction::Add(a, b, out) => {
+                program[out] = a.get_value(program) + b.get_value(program);
             }
-            2 => {
-                program[output_index] = left_operand * right_operand;
+            Instruction::Multiply(a, b, out) => {
+                program[out] = a.get_value(program) * b.get_value(program);
             }
-            99 => {
-                // End of program
-                return Ok(());
+            Instruction::Input(destination) => {
+                program[destination] = 1;
             }
-            unknown => {
-                return Err(ProgramError::UnknownOpcode(unknown));
+            Instruction::Output(value) => {
+                println!("{}", value.get_value(program));
+            }
+            Instruction::Halt => {
+                break;
             }
         }
+
+        instruction_ptr += instruction.arity();
     }
 
     Ok(())
