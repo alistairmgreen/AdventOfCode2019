@@ -25,9 +25,23 @@ fn main() {
         9, 3, 9, 101, 2, 9, 9, 4, 9, 99,
     ];
 
+    println!("Part 1:");
+
     let (phases, signal) = Permutations::of(vec![0, 1, 2, 3, 4])
         .map(|phases| {
             let signal = thruster_signal(&program, &phases).unwrap();
+            (phases, signal)
+        })
+        .max_by_key(|(_, signal)| *signal)
+        .unwrap();
+
+    println!("Phases: {:?} give signal strength {}", phases, signal);
+
+    println!("Part 2:");
+
+    let (phases, signal) = Permutations::of(vec![5, 6, 7, 8, 9])
+        .map(|phases| {
+            let signal = feedback_loop(&program, &phases).unwrap();
             (phases, signal)
         })
         .max_by_key(|(_, signal)| *signal)
@@ -44,6 +58,31 @@ fn thruster_signal(program: &[i32], phases: &[i32]) -> Result<i32, ProgramError>
     }
 
     Ok(input)
+}
+
+fn feedback_loop(program: &[i32], phases: &[i32]) -> Result<i32, ProgramError> {
+    let mut amplifiers: Vec<IntcodeMachine> = phases
+        .iter()
+        .map(|&phase| IntcodeMachine::with_seed(program.to_owned(), phase))
+        .collect();
+    let last_amplifier = amplifiers.len() - 1;
+    let mut previous_output = vec![0];
+
+    loop {
+        for (index, amplifier) in amplifiers.iter_mut().enumerate() {
+            amplifier.add_inputs(previous_output);
+            let output = amplifier.run()?;
+
+            match output {
+                ProgramState::Completed(mut values) if index == last_amplifier => {
+                    return Ok(values.pop().expect("No output from last amplifier!"));
+                }
+                ProgramState::PendingInput(values) | ProgramState::Completed(values) => {
+                    previous_output = values;
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -77,5 +116,28 @@ mod tests {
         ];
         let phases = vec![1, 0, 4, 3, 2];
         assert_eq!(thruster_signal(&program, &phases), Ok(65210));
+    }
+
+    #[test]
+    fn part2_example1() {
+        let program = vec![
+            3, 26, 1001, 26, -4, 26, 3, 27, 1002, 27, 2, 27, 1, 27, 26, 27, 4, 27, 1001, 28, -1,
+            28, 1005, 28, 6, 99, 0, 0, 5,
+        ];
+
+        let result = feedback_loop(&program, &vec![9, 8, 7, 6, 5]);
+        assert_eq!(result, Ok(139629729))
+    }
+
+    #[test]
+    fn part2_example2() {
+        let program = vec![
+            3, 52, 1001, 52, -5, 52, 3, 53, 1, 52, 56, 54, 1007, 54, 5, 55, 1005, 55, 26, 1001, 54,
+            -5, 54, 1105, 1, 12, 1, 53, 54, 53, 1008, 54, 0, 55, 1001, 55, 1, 55, 2, 53, 55, 53, 4,
+            53, 1001, 56, -1, 56, 1005, 56, 6, 99, 0, 0, 0, 0, 10,
+        ];
+
+        let result = feedback_loop(&program, &vec![9, 7, 8, 5, 6]);
+        assert_eq!(result, Ok(18216))
     }
 }

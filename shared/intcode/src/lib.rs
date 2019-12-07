@@ -1,72 +1,131 @@
 pub mod errors;
 pub mod instructions;
+use std::collections::VecDeque;
 pub use crate::errors::ProgramError;
 use instructions::Instruction;
 
+pub enum ProgramState {
+    Completed(Vec<i32>),
+    PendingInput(Vec<i32>),
+}
+
+pub struct IntcodeMachine {
+    program: Vec<i32>,
+    instruction_ptr: usize,
+    input_queue: VecDeque<i32>,
+}
+
+impl IntcodeMachine {
+    pub fn new(program: Vec<i32>) -> IntcodeMachine {
+        IntcodeMachine {
+            program,
+            instruction_ptr: 0,
+            input_queue: VecDeque::new(),
+        }
+    }
+
+    pub fn with_seed(program: Vec<i32>, seed: i32) -> IntcodeMachine{
+        let mut machine = IntcodeMachine::new(program);
+        machine.input_queue.push_front(seed);
+        machine
+    }
+
+    pub fn add_inputs<T>(&mut self, inputs: T)
+    where
+        T: IntoIterator<Item = i32>
+    {
+        for value in inputs.into_iter() {
+            self.input_queue.push_back(value);
+        }
+    }
+
+    pub fn run(&mut self) -> Result<ProgramState, ProgramError>
+    {
+        let mut outputs = Vec::new();
+        let mut jumped: bool;
+     
+        while self.instruction_ptr < self.program.len() {
+            jumped = false;
+            let instruction = Instruction::read(&self.program, self.instruction_ptr)?;
+    
+            match instruction {
+                Instruction::Add(a, b, out) => {
+                    self.program[out] = a.get_value(&self.program) + b.get_value(&self.program);
+                }
+                Instruction::Multiply(a, b, out) => {
+                    self.program[out] = a.get_value(&self.program) * b.get_value(&self.program);
+                }
+                Instruction::Input(destination) => {
+                    match self.input_queue.pop_front() {
+                        Some(input) => {
+                            self.program[destination] = input;
+                        }
+                        None => {
+                            return Ok(ProgramState::PendingInput(outputs));
+                        }
+                    }
+                }
+                Instruction::Output(value) => {
+                    outputs.push(value.get_value(&self.program));
+                }
+                Instruction::JumpIfFalse(value, destination) => {
+                    if value.get_value(&self.program) == 0 {
+                        self.instruction_ptr = destination.get_value(&self.program) as usize;
+                        jumped = true;
+                    }
+                }
+                Instruction::JumpIfTrue(value, destination) => {
+                    if value.get_value(&self.program) != 0 {
+                        self.instruction_ptr = destination.get_value(&self.program) as usize;
+                        jumped = true;
+                    }
+                }
+                Instruction::LessThan(a, b, destination) => {
+                    self.program[destination] = if a.get_value(&self.program) < b.get_value(&self.program) {
+                        1
+                    } else {
+                        0
+                    };
+                }
+                Instruction::Equals(a, b, destination) => {
+                    self.program[destination] = if a.get_value(&self.program) == b.get_value(&self.program) {
+                        1
+                    } else {
+                        0
+                    };
+                }
+                Instruction::Halt => {
+                    break;
+                }
+            }
+    
+            if !jumped {
+                self.instruction_ptr += instruction.arity();
+            }
+        }
+    
+        Ok(ProgramState::Completed(outputs))
+    }
+}
+
+// Backward compatibility for Days 2 and 5
 pub fn run<T>(program: &mut [i32], input: T) -> Result<Vec<i32>, ProgramError>
 where
     T: IntoIterator<Item = i32>,
 {
-    let mut inputs = input.into_iter();
-    let mut outputs = Vec::new();
-    let mut instruction_ptr = 0;
-    let program_length = program.len();
-    let mut jumped: bool;
+    let mut machine = IntcodeMachine::new(program.to_owned());
+    machine.add_inputs(input);
 
-    while instruction_ptr < program_length {
-        jumped = false;
-        let instruction = Instruction::read(program, instruction_ptr)?;
-
-        match instruction {
-            Instruction::Add(a, b, out) => {
-                program[out] = a.get_value(program) + b.get_value(program);
-            }
-            Instruction::Multiply(a, b, out) => {
-                program[out] = a.get_value(program) * b.get_value(program);
-            }
-            Instruction::Input(destination) => {
-                program[destination] = inputs.next().ok_or(ProgramError::InsufficientInput)?;
-            }
-            Instruction::Output(value) => {
-                outputs.push(value.get_value(program));
-            }
-            Instruction::JumpIfFalse(value, destination) => {
-                if value.get_value(program) == 0 {
-                    instruction_ptr = destination.get_value(program) as usize;
-                    jumped = true;
-                }
-            }
-            Instruction::JumpIfTrue(value, destination) => {
-                if value.get_value(program) != 0 {
-                    instruction_ptr = destination.get_value(program) as usize;
-                    jumped = true;
-                }
-            }
-            Instruction::LessThan(a, b, destination) => {
-                program[destination] = if a.get_value(program) < b.get_value(program) {
-                    1
-                } else {
-                    0
-                };
-            }
-            Instruction::Equals(a, b, destination) => {
-                program[destination] = if a.get_value(program) == b.get_value(program) {
-                    1
-                } else {
-                    0
-                };
-            }
-            Instruction::Halt => {
-                break;
-            }
-        }
-
-        if !jumped {
-            instruction_ptr += instruction.arity();
-        }
+    let result = machine.run();
+    for (index, &instruction) in machine.program.iter().enumerate() {
+        program[index] = instruction;
     }
 
-    Ok(outputs)
+    match result {
+        Ok(ProgramState::Completed(outputs)) => Ok(outputs),
+        Ok(ProgramState::PendingInput(_)) => Err(ProgramError::InsufficientInput),
+        Err(e) => Err(e)
+    }
 }
 
 #[cfg(test)]

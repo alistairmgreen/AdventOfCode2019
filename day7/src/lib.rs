@@ -10,7 +10,7 @@ pub mod permutation {
         pub fn of(items: Vec<T>) -> Permutations<T>{
             let n = items.len();
             Permutations {
-                items: items,
+                items,
                 stack: vec![0; n],
                 counter: 0,
                 is_first: true,
