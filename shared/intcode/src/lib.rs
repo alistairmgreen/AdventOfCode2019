@@ -3,7 +3,12 @@ pub mod instructions;
 pub use crate::errors::ProgramError;
 use instructions::Instruction;
 
-pub fn run(program: &mut [i32], input: i32) -> Result<(), ProgramError> {
+pub fn run<T>(program: &mut [i32], input: T) -> Result<Vec<i32>, ProgramError>
+where
+    T: IntoIterator<Item = i32>,
+{
+    let mut inputs = input.into_iter();
+    let mut outputs = Vec::new();
     let mut instruction_ptr = 0;
     let program_length = program.len();
     let mut jumped: bool;
@@ -20,10 +25,10 @@ pub fn run(program: &mut [i32], input: i32) -> Result<(), ProgramError> {
                 program[out] = a.get_value(program) * b.get_value(program);
             }
             Instruction::Input(destination) => {
-                program[destination] = input;
+                program[destination] = inputs.next().ok_or(ProgramError::InsufficientInput)?;
             }
             Instruction::Output(value) => {
-                println!("{}", value.get_value(program));
+                outputs.push(value.get_value(program));
             }
             Instruction::JumpIfFalse(value, destination) => {
                 if value.get_value(program) == 0 {
@@ -61,17 +66,18 @@ pub fn run(program: &mut [i32], input: i32) -> Result<(), ProgramError> {
         }
     }
 
-    Ok(())
+    Ok(outputs)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::iter;
 
     #[test]
     fn example1() {
         let mut program = vec![1, 9, 10, 3, 2, 3, 11, 0, 99, 30, 40, 50];
-        let result = run(&mut program);
+        let result = run(&mut program, iter::empty());
         assert!(result.is_ok());
         assert_eq!(program[0], 3500);
     }
@@ -79,7 +85,7 @@ mod tests {
     #[test]
     fn example2() {
         let mut program = vec![1, 0, 0, 0, 99];
-        let result = run(&mut program);
+        let result = run(&mut program, iter::empty());
         assert!(result.is_ok());
         assert_eq!(program[0], 2);
     }
@@ -87,7 +93,7 @@ mod tests {
     #[test]
     fn example3() {
         let mut program = vec![2, 3, 0, 3, 99];
-        let result = run(&mut program);
+        let result = run(&mut program, iter::empty());
         assert!(result.is_ok());
         assert_eq!(program[0], 2)
     }
@@ -95,7 +101,7 @@ mod tests {
     #[test]
     fn example4() {
         let mut program = vec![2, 4, 4, 5, 99, 0];
-        let result = run(&mut program);
+        let result = run(&mut program, iter::empty());
         assert!(result.is_ok());
         assert_eq!(program[0], 2)
     }
@@ -103,7 +109,7 @@ mod tests {
     #[test]
     fn example5() {
         let mut program = vec![1, 1, 1, 4, 99, 5, 6, 0, 99];
-        let result = run(&mut program);
+        let result = run(&mut program, iter::empty());
         assert!(result.is_ok());
         assert_eq!(program[0], 30)
     }
@@ -120,8 +126,57 @@ mod tests {
             14, 0, 0,
         ];
 
-        let result = run(&mut program);
+        let result = run(&mut program, iter::empty());
         assert!(result.is_ok());
         assert_eq!(program[0], 1969_07_20);
+    }
+
+    #[test]
+    fn day5_solution() {
+        let mut program = vec![
+            3, 225, 1, 225, 6, 6, 1100, 1, 238, 225, 104, 0, 1, 191, 196, 224, 1001, 224, -85, 224,
+            4, 224, 1002, 223, 8, 223, 1001, 224, 4, 224, 1, 223, 224, 223, 1101, 45, 50, 225,
+            1102, 61, 82, 225, 101, 44, 39, 224, 101, -105, 224, 224, 4, 224, 102, 8, 223, 223,
+            101, 5, 224, 224, 1, 224, 223, 223, 102, 14, 187, 224, 101, -784, 224, 224, 4, 224,
+            102, 8, 223, 223, 101, 7, 224, 224, 1, 224, 223, 223, 1001, 184, 31, 224, 1001, 224,
+            -118, 224, 4, 224, 102, 8, 223, 223, 1001, 224, 2, 224, 1, 223, 224, 223, 1102, 91, 18,
+            225, 2, 35, 110, 224, 101, -810, 224, 224, 4, 224, 102, 8, 223, 223, 101, 3, 224, 224,
+            1, 223, 224, 223, 1101, 76, 71, 224, 1001, 224, -147, 224, 4, 224, 102, 8, 223, 223,
+            101, 2, 224, 224, 1, 224, 223, 223, 1101, 7, 16, 225, 1102, 71, 76, 224, 101, -5396,
+            224, 224, 4, 224, 1002, 223, 8, 223, 101, 5, 224, 224, 1, 224, 223, 223, 1101, 72, 87,
+            225, 1101, 56, 77, 225, 1102, 70, 31, 225, 1102, 29, 15, 225, 1002, 158, 14, 224, 1001,
+            224, -224, 224, 4, 224, 102, 8, 223, 223, 101, 1, 224, 224, 1, 223, 224, 223, 4, 223,
+            99, 0, 0, 0, 677, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1105, 0, 99999, 1105, 227, 247,
+            1105, 1, 99999, 1005, 227, 99999, 1005, 0, 256, 1105, 1, 99999, 1106, 227, 99999, 1106,
+            0, 265, 1105, 1, 99999, 1006, 0, 99999, 1006, 227, 274, 1105, 1, 99999, 1105, 1, 280,
+            1105, 1, 99999, 1, 225, 225, 225, 1101, 294, 0, 0, 105, 1, 0, 1105, 1, 99999, 1106, 0,
+            300, 1105, 1, 99999, 1, 225, 225, 225, 1101, 314, 0, 0, 106, 0, 0, 1105, 1, 99999,
+            1007, 226, 226, 224, 1002, 223, 2, 223, 1006, 224, 329, 1001, 223, 1, 223, 8, 226, 677,
+            224, 1002, 223, 2, 223, 1005, 224, 344, 1001, 223, 1, 223, 107, 226, 677, 224, 1002,
+            223, 2, 223, 1006, 224, 359, 1001, 223, 1, 223, 8, 677, 677, 224, 1002, 223, 2, 223,
+            1005, 224, 374, 1001, 223, 1, 223, 1108, 226, 226, 224, 1002, 223, 2, 223, 1005, 224,
+            389, 1001, 223, 1, 223, 7, 677, 226, 224, 1002, 223, 2, 223, 1005, 224, 404, 101, 1,
+            223, 223, 7, 226, 226, 224, 102, 2, 223, 223, 1006, 224, 419, 1001, 223, 1, 223, 1108,
+            226, 677, 224, 102, 2, 223, 223, 1005, 224, 434, 1001, 223, 1, 223, 1107, 226, 226,
+            224, 1002, 223, 2, 223, 1006, 224, 449, 1001, 223, 1, 223, 1007, 677, 677, 224, 102, 2,
+            223, 223, 1006, 224, 464, 1001, 223, 1, 223, 107, 226, 226, 224, 1002, 223, 2, 223,
+            1005, 224, 479, 101, 1, 223, 223, 1107, 677, 226, 224, 1002, 223, 2, 223, 1005, 224,
+            494, 1001, 223, 1, 223, 1008, 677, 677, 224, 102, 2, 223, 223, 1005, 224, 509, 101, 1,
+            223, 223, 107, 677, 677, 224, 102, 2, 223, 223, 1005, 224, 524, 1001, 223, 1, 223,
+            1108, 677, 226, 224, 1002, 223, 2, 223, 1005, 224, 539, 1001, 223, 1, 223, 7, 226, 677,
+            224, 102, 2, 223, 223, 1006, 224, 554, 1001, 223, 1, 223, 8, 677, 226, 224, 1002, 223,
+            2, 223, 1006, 224, 569, 101, 1, 223, 223, 108, 226, 226, 224, 1002, 223, 2, 223, 1006,
+            224, 584, 1001, 223, 1, 223, 1107, 226, 677, 224, 1002, 223, 2, 223, 1006, 224, 599,
+            101, 1, 223, 223, 1008, 226, 226, 224, 102, 2, 223, 223, 1005, 224, 614, 1001, 223, 1,
+            223, 1007, 226, 677, 224, 1002, 223, 2, 223, 1006, 224, 629, 1001, 223, 1, 223, 108,
+            677, 226, 224, 102, 2, 223, 223, 1005, 224, 644, 101, 1, 223, 223, 1008, 226, 677, 224,
+            1002, 223, 2, 223, 1005, 224, 659, 101, 1, 223, 223, 108, 677, 677, 224, 1002, 223, 2,
+            223, 1006, 224, 674, 1001, 223, 1, 223, 4, 223, 99, 226,
+        ];
+
+        let result = run(&mut program, iter::once(5))
+            .unwrap();
+        
+        assert_eq!(result, vec![4283952]);
     }
 }

@@ -1,4 +1,5 @@
 use intcode::*;
+use std::iter;
 
 fn main() {
     let mut program = vec![
@@ -41,12 +42,26 @@ fn main() {
     ];
 
     println!("--- Part 1 ---");
-    if let Err(e) = run(&mut program.clone(), 1) {
-        eprintln!("{:?}", e);
+    match run(&mut program.clone(), iter::once(1)) {
+        Ok(outputs) => {
+            for output in outputs {
+                println!("{}", output);
+            }
+        }
+        Err(e) => {
+            eprintln!("{:?}", e);
+        }
     }
 
     println!("--- Part 2 ---");
-    if let Err(e) = run(&mut program, 5) {
-        eprintln!("{:?}", e);
+    match run(&mut program, iter::once(5)) {
+        Ok(outputs) => {
+            for output in outputs {
+                println!("{}", output);
+            }
+        }
+        Err(e) => {
+            eprintln!("{:?}", e);
+        }
     }
 }

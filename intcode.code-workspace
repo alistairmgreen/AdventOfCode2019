@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "shared/intcode"
+		},
+		{
+			"path": "day2"
+		},
+		{
+			"path": "day5"
+		}
+	],
+	"settings": {}
+}

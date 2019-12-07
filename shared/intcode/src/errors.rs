@@ -5,13 +5,15 @@ use std::fmt;
 pub enum ProgramError {
     UnknownOpcode(i32),
     IndexOutOfRange(usize),
+    InsufficientInput,
 }
 
 impl fmt::Display for ProgramError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ProgramError::UnknownOpcode(code) => write!(f, "Program alarm: {}", code),
+            ProgramError::UnknownOpcode(code) => write!(f, "Unknown opcode: {}", code),
             ProgramError::IndexOutOfRange(index) => write!(f, "Index out of range: {}", index),
+            ProgramError::InsufficientInput => write!(f, "Not enough input values supplied")
         }
     }
 }

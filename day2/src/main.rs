@@ -1,4 +1,5 @@
 use intcode::*;
+use std::iter;
 
 fn main() {
     let program = vec![
@@ -16,10 +17,10 @@ fn main() {
             modified_program[1] = noun;
             modified_program[2] = verb;
 
-            let result = run(&mut modified_program, 0);
+            let result = run(&mut modified_program, iter::empty());
 
             match result {
-                Ok(()) => {
+                Ok(_) => {
                     if modified_program[0] == 19_690_720 {
                         println!("Noun = {}, verb = {}, puzzle solution = {}", noun, verb, 100 * noun + verb);
                         break 'noun;
