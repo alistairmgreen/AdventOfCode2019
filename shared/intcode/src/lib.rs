@@ -1,12 +1,14 @@
 pub mod errors;
 pub mod instructions;
+pub use crate::errors::ProgramError;
+use crate::instructions::Argument;
 use core::ops::{Index, IndexMut};
+use instructions::Instruction;
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
 use std::iter::FromIterator;
-pub use crate::errors::ProgramError;
-use instructions::Instruction;
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum ProgramState {
     Completed(Vec<i64>),
     PendingInput(Vec<i64>),
@@ -19,14 +21,10 @@ impl ProgramStore {
     pub fn new() -> ProgramStore {
         ProgramStore(BTreeMap::new())
     }
-    fn len(&self) -> usize {
-        *self.0.keys().max().unwrap_or(&0)
-    }
 }
 
 impl Index<usize> for ProgramStore {
     type Output = i64;
-    
     fn index(&self, index: usize) -> &Self::Output {
         self.0.get(&index).unwrap_or(&0)
     }
@@ -41,32 +39,35 @@ impl IndexMut<usize> for ProgramStore {
 impl FromIterator<i64> for ProgramStore {
     fn from_iter<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = i64> {
-            let map: BTreeMap<usize, i64> = iter.into_iter()
-                .enumerate()
-                .collect();
-            
-            ProgramStore(map)
-        }
+        I: IntoIterator<Item = i64>,
+    {
+        let map: BTreeMap<usize, i64> = iter.into_iter().enumerate().collect();
+
+        ProgramStore(map)
+    }
 }
 
 pub struct IntcodeMachine {
     program: ProgramStore,
     instruction_ptr: usize,
+    relative_base: i64,
     input_queue: VecDeque<i64>,
 }
 
 impl IntcodeMachine {
     pub fn new<I>(program: I) -> IntcodeMachine
-    where I: IntoIterator<Item = i64> {
+    where
+        I: IntoIterator<Item = i64>,
+    {
         IntcodeMachine {
             program: ProgramStore::from_iter(program),
             instruction_ptr: 0,
+            relative_base: 0,
             input_queue: VecDeque::new(),
         }
     }
 
-    pub fn with_seed(program: Vec<i64>, seed: i64) -> IntcodeMachine{
+    pub fn with_seed(program: Vec<i64>, seed: i64) -> IntcodeMachine {
         let mut machine = IntcodeMachine::new(program);
         machine.input_queue.push_front(seed);
         machine
@@ -74,78 +75,108 @@ impl IntcodeMachine {
 
     pub fn add_inputs<T>(&mut self, inputs: T)
     where
-        T: IntoIterator<Item = i64>
+        T: IntoIterator<Item = i64>,
     {
         for value in inputs.into_iter() {
             self.input_queue.push_back(value);
         }
     }
 
-    pub fn run(&mut self) -> Result<ProgramState, ProgramError>
-    {
+    fn get_value(&self, argument: &Argument) -> i64 {
+        match *argument {
+            Argument::Immediate(value) => value,
+            Argument::Position(index) => self.program[index],
+            Argument::Relative(index) => self.program[(self.relative_base as i64 + index) as usize],
+        }
+    }
+
+    pub fn run(&mut self) -> Result<ProgramState, ProgramError> {
         let mut outputs = Vec::new();
         let mut jumped: bool;
-     
-        while self.instruction_ptr < self.program.len() {
+        loop {
             jumped = false;
             let instruction = Instruction::read(&self.program, self.instruction_ptr)?;
-    
             match instruction {
-                Instruction::Add(a, b, out) => {
-                    self.program[out] = a.get_value(&self.program) + b.get_value(&self.program);
+                Instruction::Add(a, b, destination) => {
+                    let index = match destination {
+                        Argument::Immediate(n) => n as usize,
+                        Argument::Position(n) => n as usize,
+                        Argument::Relative(n) => (n + self.relative_base) as usize,
+                    };
+                    self.program[index] = self.get_value(&a) + self.get_value(&b);
                 }
-                Instruction::Multiply(a, b, out) => {
-                    self.program[out] = a.get_value(&self.program) * b.get_value(&self.program);
+                Instruction::Multiply(a, b, destination) => {
+                    let index = match destination {
+                        Argument::Immediate(n) => n as usize,
+                        Argument::Position(n) => n as usize,
+                        Argument::Relative(n) => (n + self.relative_base) as usize,
+                    };
+                    self.program[index] = self.get_value(&a) * self.get_value(&b);
                 }
-                Instruction::Input(destination) => {
-                    match self.input_queue.pop_front() {
-                        Some(input) => {
-                            self.program[destination] = input;
-                        }
-                        None => {
-                            return Ok(ProgramState::PendingInput(outputs));
-                        }
+                Instruction::Input(destination) => match self.input_queue.pop_front() {
+                    Some(input) => {
+                        let index = match destination {
+                            Argument::Immediate(n) => n as usize,
+                            Argument::Position(n) => n as usize,
+                            Argument::Relative(n) => (n + self.relative_base) as usize,
+                        };
+                        self.program[index] = input;
                     }
-                }
+                    None => {
+                        return Ok(ProgramState::PendingInput(outputs));
+                    }
+                },
                 Instruction::Output(value) => {
-                    outputs.push(value.get_value(&self.program));
+                    let v = self.get_value(&value);
+                    outputs.push(v);
                 }
                 Instruction::JumpIfFalse(value, destination) => {
-                    if value.get_value(&self.program) == 0 {
-                        self.instruction_ptr = destination.get_value(&self.program) as usize;
+                    if self.get_value(&value) == 0 {
+                        self.instruction_ptr = self.get_value(&destination) as usize;
                         jumped = true;
                     }
                 }
                 Instruction::JumpIfTrue(value, destination) => {
-                    if value.get_value(&self.program) != 0 {
-                        self.instruction_ptr = destination.get_value(&self.program) as usize;
+                    if self.get_value(&value) != 0 {
+                        self.instruction_ptr = self.get_value(&destination) as usize;
                         jumped = true;
                     }
                 }
                 Instruction::LessThan(a, b, destination) => {
-                    self.program[destination] = if a.get_value(&self.program) < b.get_value(&self.program) {
+                    let index = match destination {
+                        Argument::Immediate(n) => n as usize,
+                        Argument::Position(n) => n as usize,
+                        Argument::Relative(n) => (n + self.relative_base) as usize,
+                    };
+                    self.program[index] = if self.get_value(&a) < self.get_value(&b) {
                         1
                     } else {
                         0
                     };
                 }
                 Instruction::Equals(a, b, destination) => {
-                    self.program[destination] = if a.get_value(&self.program) == b.get_value(&self.program) {
+                    let index = match destination {
+                        Argument::Immediate(n) => n as usize,
+                        Argument::Position(n) => n as usize,
+                        Argument::Relative(n) => (n + self.relative_base) as usize,
+                    };
+                    self.program[index] = if self.get_value(&a) == self.get_value(&b) {
                         1
                     } else {
                         0
                     };
                 }
+                Instruction::SetRelativeBase(a) => {
+                    self.relative_base += self.get_value(&a);
+                }
                 Instruction::Halt => {
                     break;
                 }
             }
-    
             if !jumped {
                 self.instruction_ptr += instruction.arity();
             }
         }
-    
         Ok(ProgramState::Completed(outputs))
     }
 }
@@ -166,7 +197,7 @@ where
     match result {
         Ok(ProgramState::Completed(outputs)) => Ok(outputs),
         Ok(ProgramState::PendingInput(_)) => Err(ProgramError::InsufficientInput),
-        Err(e) => Err(e)
+        Err(e) => Err(e),
     }
 }
 
@@ -176,15 +207,12 @@ mod tests {
     use std::iter;
 
     #[test]
-    fn program_store_allows_any_index()
-    {
+    fn program_store_allows_any_index() {
         let mut program = ProgramStore::new();
         assert_eq!(program[10], 0);
 
         program[10] = 100;
         assert_eq!(program[10], 100);
-
-        assert_eq!(program.len(), 10);
     }
 
     #[test]
@@ -287,9 +315,40 @@ mod tests {
             223, 1006, 224, 674, 1001, 223, 1, 223, 4, 223, 99, 226,
         ];
 
-        let result = run(&mut program, iter::once(5))
-            .unwrap();
-        
+        let result = run(&mut program, iter::once(5)).unwrap();
         assert_eq!(result, vec![4283952]);
+    }
+
+    #[test]
+    fn day9_example1() {
+        let quine = vec![
+            109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99,
+        ];
+        let mut machine = IntcodeMachine::new(quine.clone());
+        let result = machine.run();
+        assert_eq!(result, Ok(ProgramState::Completed(quine)));
+    }
+
+    #[test]
+    fn day9_example2() {
+        let program = vec![1102, 34915192, 34915192, 7, 4, 7, 99, 0];
+        let mut machine = IntcodeMachine::new(program);
+        let result = match machine.run().unwrap() {
+            ProgramState::Completed(mut numbers) => numbers.pop().unwrap(),
+            ProgramState::PendingInput(_) => panic!("Not completed"),
+        };
+
+        let s = format!("{}", result);
+        assert_eq!(s.chars().count(), 16);
+    }
+
+    #[test]
+    fn day9_example3() {
+        let program = vec![104, 1125899906842624, 99];
+        let mut machine = IntcodeMachine::new(program);
+        assert_eq!(
+            machine.run(),
+            Ok(ProgramState::Completed(vec![1125899906842624]))
+        );
     }
 }
