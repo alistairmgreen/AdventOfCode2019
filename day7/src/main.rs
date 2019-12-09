@@ -50,7 +50,7 @@ fn main() {
     println!("Phases: {:?} give signal strength {}", phases, signal);
 }
 
-fn thruster_signal(program: &[i32], phases: &[i32]) -> Result<i32, ProgramError> {
+fn thruster_signal(program: &[i64], phases: &[i64]) -> Result<i64, ProgramError> {
     let mut input = 0;
     for phase in phases {
         let output = run(&mut program.to_owned(), vec![*phase, input])?;
@@ -60,7 +60,7 @@ fn thruster_signal(program: &[i32], phases: &[i32]) -> Result<i32, ProgramError>
     Ok(input)
 }
 
-fn feedback_loop(program: &[i32], phases: &[i32]) -> Result<i32, ProgramError> {
+fn feedback_loop(program: &[i64], phases: &[i64]) -> Result<i64, ProgramError> {
     let mut amplifiers: Vec<IntcodeMachine> = phases
         .iter()
         .map(|&phase| IntcodeMachine::with_seed(program.to_owned(), phase))

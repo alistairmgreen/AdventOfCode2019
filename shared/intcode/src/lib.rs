@@ -5,18 +5,18 @@ pub use crate::errors::ProgramError;
 use instructions::Instruction;
 
 pub enum ProgramState {
-    Completed(Vec<i32>),
-    PendingInput(Vec<i32>),
+    Completed(Vec<i64>),
+    PendingInput(Vec<i64>),
 }
 
 pub struct IntcodeMachine {
-    program: Vec<i32>,
+    program: Vec<i64>,
     instruction_ptr: usize,
-    input_queue: VecDeque<i32>,
+    input_queue: VecDeque<i64>,
 }
 
 impl IntcodeMachine {
-    pub fn new(program: Vec<i32>) -> IntcodeMachine {
+    pub fn new(program: Vec<i64>) -> IntcodeMachine {
         IntcodeMachine {
             program,
             instruction_ptr: 0,
@@ -24,7 +24,7 @@ impl IntcodeMachine {
         }
     }
 
-    pub fn with_seed(program: Vec<i32>, seed: i32) -> IntcodeMachine{
+    pub fn with_seed(program: Vec<i64>, seed: i64) -> IntcodeMachine{
         let mut machine = IntcodeMachine::new(program);
         machine.input_queue.push_front(seed);
         machine
@@ -32,7 +32,7 @@ impl IntcodeMachine {
 
     pub fn add_inputs<T>(&mut self, inputs: T)
     where
-        T: IntoIterator<Item = i32>
+        T: IntoIterator<Item = i64>
     {
         for value in inputs.into_iter() {
             self.input_queue.push_back(value);
@@ -109,9 +109,9 @@ impl IntcodeMachine {
 }
 
 // Backward compatibility for Days 2 and 5
-pub fn run<T>(program: &mut [i32], input: T) -> Result<Vec<i32>, ProgramError>
+pub fn run<T>(program: &mut [i64], input: T) -> Result<Vec<i64>, ProgramError>
 where
-    T: IntoIterator<Item = i32>,
+    T: IntoIterator<Item = i64>,
 {
     let mut machine = IntcodeMachine::new(program.to_owned());
     machine.add_inputs(input);

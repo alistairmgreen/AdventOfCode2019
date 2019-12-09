@@ -3,7 +3,7 @@ use std::fmt;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProgramError {
-    UnknownOpcode(i32),
+    UnknownOpcode(i64),
     IndexOutOfRange(usize),
     InsufficientInput,
 }

@@ -3,11 +3,11 @@ use crate::errors::ProgramError;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Argument {
     Position(usize),
-    Immediate(i32),
+    Immediate(i64),
 }
 
 impl Argument {
-    pub fn get_value(&self, program: &[i32]) -> i32 {
+    pub fn get_value(&self, program: &[i64]) -> i64 {
         match *self {
             Argument::Position(index) => program[index],
             Argument::Immediate(value) => value,
@@ -29,7 +29,7 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn read(program: &[i32], instruction_ptr: usize) -> Result<Instruction, ProgramError> {
+    pub fn read(program: &[i64], instruction_ptr: usize) -> Result<Instruction, ProgramError> {
         let instruction = program[instruction_ptr];
         let opcode = instruction % 100;
         let hundreds = (instruction % 1000) - opcode;
