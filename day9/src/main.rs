@@ -53,7 +53,15 @@ fn main() {
         1105, 1, 968, 21201, -2, 0, -2, 109, -3, 2105, 1, 0,
     ];
 
-    let mut machine = IntcodeMachine::with_seed(program, 1);
+    println!("Part 1:");
+    execute(program.clone(), 1);
+
+    println!("Part 2:");
+    execute(program, 2);
+}
+
+fn execute(program: Vec<i64>, input: i64) {
+    let mut machine = IntcodeMachine::with_seed(program, input);
 
     match machine.run() {
         Ok(ProgramState::Completed(outputs)) => {
