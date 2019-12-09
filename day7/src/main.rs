@@ -125,8 +125,8 @@ mod tests {
             28, 1005, 28, 6, 99, 0, 0, 5,
         ];
 
-        let result = feedback_loop(&program, &vec![9, 8, 7, 6, 5]);
-        assert_eq!(result, Ok(139629729))
+        let result = feedback_loop(&program, &[9, 8, 7, 6, 5]);
+        assert_eq!(result, Ok(139_629_729))
     }
 
     #[test]
@@ -137,7 +137,7 @@ mod tests {
             53, 1001, 56, -1, 56, 1005, 56, 6, 99, 0, 0, 0, 0, 10,
         ];
 
-        let result = feedback_loop(&program, &vec![9, 7, 8, 5, 6]);
+        let result = feedback_loop(&program, &[9, 7, 8, 5, 6]);
         assert_eq!(result, Ok(18216))
     }
 }
