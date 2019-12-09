@@ -1,6 +1,9 @@
 pub mod errors;
 pub mod instructions;
+use core::ops::{Index, IndexMut};
+use std::collections::BTreeMap;
 use std::collections::VecDeque;
+use std::iter::FromIterator;
 pub use crate::errors::ProgramError;
 use instructions::Instruction;
 
@@ -9,16 +12,55 @@ pub enum ProgramState {
     PendingInput(Vec<i64>),
 }
 
+#[derive(Debug, Default)]
+pub struct ProgramStore(BTreeMap<usize, i64>);
+
+impl ProgramStore {
+    pub fn new() -> ProgramStore {
+        ProgramStore(BTreeMap::new())
+    }
+    fn len(&self) -> usize {
+        *self.0.keys().max().unwrap_or(&0)
+    }
+}
+
+impl Index<usize> for ProgramStore {
+    type Output = i64;
+    
+    fn index(&self, index: usize) -> &Self::Output {
+        self.0.get(&index).unwrap_or(&0)
+    }
+}
+
+impl IndexMut<usize> for ProgramStore {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.0.entry(index).or_insert(0)
+    }
+}
+
+impl FromIterator<i64> for ProgramStore {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = i64> {
+            let map: BTreeMap<usize, i64> = iter.into_iter()
+                .enumerate()
+                .collect();
+            
+            ProgramStore(map)
+        }
+}
+
 pub struct IntcodeMachine {
-    program: Vec<i64>,
+    program: ProgramStore,
     instruction_ptr: usize,
     input_queue: VecDeque<i64>,
 }
 
 impl IntcodeMachine {
-    pub fn new(program: Vec<i64>) -> IntcodeMachine {
+    pub fn new<I>(program: I) -> IntcodeMachine
+    where I: IntoIterator<Item = i64> {
         IntcodeMachine {
-            program,
+            program: ProgramStore::from_iter(program),
             instruction_ptr: 0,
             input_queue: VecDeque::new(),
         }
@@ -117,8 +159,8 @@ where
     machine.add_inputs(input);
 
     let result = machine.run();
-    for (index, &instruction) in machine.program.iter().enumerate() {
-        program[index] = instruction;
+    for (index, p) in program.iter_mut().enumerate() {
+        *p = machine.program[index];
     }
 
     match result {
@@ -132,6 +174,18 @@ where
 mod tests {
     use super::*;
     use std::iter;
+
+    #[test]
+    fn program_store_allows_any_index()
+    {
+        let mut program = ProgramStore::new();
+        assert_eq!(program[10], 0);
+
+        program[10] = 100;
+        assert_eq!(program[10], 100);
+
+        assert_eq!(program.len(), 10);
+    }
 
     #[test]
     fn example1() {

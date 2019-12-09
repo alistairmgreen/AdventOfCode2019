@@ -1,3 +1,4 @@
+use crate::ProgramStore;
 use crate::errors::ProgramError;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -7,7 +8,7 @@ pub enum Argument {
 }
 
 impl Argument {
-    pub fn get_value(&self, program: &[i64]) -> i64 {
+    pub fn get_value(&self, program: &ProgramStore) -> i64 {
         match *self {
             Argument::Position(index) => program[index],
             Argument::Immediate(value) => value,
@@ -29,7 +30,7 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn read(program: &[i64], instruction_ptr: usize) -> Result<Instruction, ProgramError> {
+    pub fn read(program: &ProgramStore, instruction_ptr: usize) -> Result<Instruction, ProgramError> {
         let instruction = program[instruction_ptr];
         let opcode = instruction % 100;
         let hundreds = (instruction % 1000) - opcode;
@@ -179,7 +180,8 @@ mod tests {
 
     #[test]
     fn read_instruction_test() {
-        let i = Instruction::read(&[1002, 1, 2, 3], 0).unwrap();
+        let program: ProgramStore = vec![1002, 1, 2, 3].into_iter().collect();
+        let i = Instruction::read(&program, 0).unwrap();
         assert_eq!(
             i,
             Instruction::Multiply(Argument::Position(1), Argument::Immediate(2), 3)
