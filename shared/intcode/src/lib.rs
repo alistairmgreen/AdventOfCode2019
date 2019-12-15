@@ -73,6 +73,11 @@ impl IntcodeMachine {
         machine
     }
 
+    pub fn add_input(&mut self, input: i64)
+    {
+        self.input_queue.push_back(input);
+    }
+
     pub fn add_inputs<T>(&mut self, inputs: T)
     where
         T: IntoIterator<Item = i64>,
