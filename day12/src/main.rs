@@ -1,11 +1,14 @@
 use std::cmp::Ordering;
 
 fn main() {
-    let mut position = vec![(17, -12, 13), (2, 1, 1), (-1, -17, 7), (12, -14, 18)];
+    let position = vec![(17, -12, 13), (2, 1, 1), (-1, -17, 7), (12, -14, 18)];
     let mut velocity = vec![(0, 0, 0); 4];
 
-    let energy = simulate(&mut position, &mut velocity, 1000);
-    println!("Total energy after 1000 steps = {}", energy);   
+    let energy = simulate(&mut position.clone(), &mut velocity, 1000);
+    println!("Total energy after 1000 steps = {}", energy);
+    
+    let t = repeat_time(position);
+    println!("The state of the universe repeats at t = {}", t);
 }
 
 fn gravity(position: &[(i32, i32, i32)], velocity: &mut [(i32, i32, i32)]) {
@@ -56,6 +59,64 @@ fn simulate(
         .sum()
 }
 
+fn find_repeat(mut position: Vec<i32>) -> usize {
+    let mut iterations = 0;
+    let initial_position = position.clone();
+    let mut velocity = vec![0; position.len()];
+    let initial_velocity = velocity.clone();
+
+    loop {
+        iterations += 1;
+
+        for (p1, v) in position.iter().zip(velocity.iter_mut()) {
+            for p2 in &position {
+                *v += match p1.cmp(p2) {
+                    Ordering::Less => 1,
+                    Ordering::Equal => 0,
+                    Ordering::Greater => -1,
+                };
+            }
+        }
+
+        for (p, v) in position.iter_mut().zip(&velocity) {
+            *p += *v;
+        }
+
+        if position == initial_position && velocity == initial_velocity {
+            break iterations;
+        }
+    }
+}
+
+fn repeat_time(position: Vec<(i32, i32, i32)>) -> usize {
+    let x: Vec<i32> = position.iter().map(|&(x, _, _)| x).collect();
+    let repeat_x = find_repeat(x);
+
+    let y: Vec<i32> = position.iter().map(|&(_, y, _)| y).collect();
+    let repeat_y = find_repeat(y);
+
+    let z: Vec<i32> = position.iter().map(|&(_, _, z)| z).collect();
+    let repeat_z = find_repeat(z);
+
+    lcm(lcm(repeat_x, repeat_y), repeat_z)
+}
+
+// Find greatest common divisor of two integers by the Euclidean Algorithm.
+fn gcd(mut a: usize, mut b: usize) -> usize {
+    while b != 0 {
+        let temp = b;
+        b = a % b;
+        a = temp;
+    }
+    
+    a
+}
+
+// Lowest common multiple
+fn lcm(a: usize, b: usize) -> usize {
+    (a * b)/gcd(a, b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -94,5 +155,17 @@ mod tests {
         );
 
         assert_eq!(energy, 179);
+    }
+
+    #[test]
+    fn part2_example1() {
+        let position = vec![(-1, 0, 2), (2, -10, -7), (4, -8, 8), (3, 5, -1)];
+        assert_eq!(repeat_time(position), 2772);
+    }
+
+    #[test]
+    fn part2_example2() {
+        let position = vec![(-8, -10, 0), (5, 5, 10), (2, -7, 3), (9, -8, -3)];
+        assert_eq!(repeat_time(position), 4_686_774_924);
     }
 }
