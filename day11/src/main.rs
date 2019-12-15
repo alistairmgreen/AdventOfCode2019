@@ -1,5 +1,6 @@
 use intcode::{IntcodeMachine, ProgramError, ProgramState};
 use std::collections::HashMap;
+use std::fmt;
 
 fn main() -> Result<(), ProgramError> {
     let program: Vec<i64> = include_str!("puzzle_input.txt")
@@ -7,8 +8,23 @@ fn main() -> Result<(), ProgramError> {
     .map(|n| n.parse().unwrap())
     .collect();
 
+    let part1 = paint_picture(program.clone(), Colour::Black)?;
+    println!("Part 1: {} squares are painted at least once.", part1.pixels.len());
+
+    println!("Part 2:");
+    let part2 = paint_picture(program, Colour::White)?;
+    println!("{}", part2);
+
+    Ok(())
+}
+
+fn paint_picture(program: Vec<i64>, initial_colour: Colour) -> Result<Picture, ProgramError> {
     let mut machine = IntcodeMachine::new(program);
     let mut picture = Picture::new();
+
+    if initial_colour == Colour::White {
+        picture.pixels.insert((0, 0), Colour::White);
+    }
 
     loop {
         match machine.run()? {
@@ -27,9 +43,7 @@ fn main() -> Result<(), ProgramError> {
         }
     }
 
-    println!("{} squares are painted at least once.", picture.pixels.len());
-
-    Ok(())
+    Ok(picture)
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -116,5 +130,34 @@ impl Picture {
             self.x = x;
             self.y = y;
         }
+    }
+}
+
+impl fmt::Display for Picture {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut min_x = 0;
+        let mut max_x = 0;
+        let mut min_y = 0;
+        let mut max_y = 0;
+
+        for &(x, y) in self.pixels.keys() {
+            if x < min_x { min_x = x; }
+            if x > max_x { max_x = x; }
+            if y < min_y { min_y = y; }
+            if y > max_y { max_y = y; }
+        }
+
+        for y in min_y..=max_y {
+            for x in min_x..=max_x {
+                let pixel = match self.pixels.get(&(x, y)) {
+                    Some(Colour::White) => '#',
+                    _ => ' '
+                };
+                write!(f, "{}", pixel)?;
+            }
+            write!(f, "\n")?;
+        }
+
+        Ok(())
     }
 }
