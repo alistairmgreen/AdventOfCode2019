@@ -1,5 +1,6 @@
 pub mod errors;
 pub mod instructions;
+use std::str::FromStr;
 pub use crate::errors::ProgramError;
 use crate::instructions::Argument;
 use core::ops::{Index, IndexMut};
@@ -183,6 +184,18 @@ impl IntcodeMachine {
             }
         }
         Ok(ProgramState::Completed(outputs))
+    }
+}
+
+impl FromStr for IntcodeMachine {
+    type Err = std::num::ParseIntError;
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let program = s.split(",")
+            .map(|n| n.parse::<i64>())
+            .collect::<Result<Vec<i64>, std::num::ParseIntError>>()?;
+        
+        Ok(IntcodeMachine::new(program))
     }
 }
 
