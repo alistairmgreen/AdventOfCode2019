@@ -11,31 +11,42 @@ fn main() {
     println!();
 }
 
-fn pattern(index: usize) -> Vec<i32> {
-    let mut p = Vec::with_capacity(index * 4);
-
-    for &coefficient in &[0, 1, 0, -1] {
-        for _ in 0..index {
-            p.push(coefficient);
-        }
-    }
-
-    p
-}
-
 // The "Flawed Frequency Transmission"
 fn fft(digits: &[u8]) -> Vec<u8> {
     let length = digits.len();
     let mut output = Vec::with_capacity(length);
 
     for index in 0..length {
-        let coefficients = pattern(index + 1);
-        let value: i32 = digits
-            .iter()
-            .zip(coefficients.into_iter().cycle().skip(1))
-            .map(|(&a, b)| (a as i32) * (b as i32))
-            .sum();
-        output.push((value.abs() % 10) as u8);
+        let mut digit: i32 = 0;
+        // Skip leading zeroes
+        let mut j = index;
+        'calculation: while j < length {
+            // Run of ones
+            for _ in 0..=index {
+                if j >= length {
+                    break 'calculation;
+                }
+                digit += digits[j] as i32;
+                j += 1;
+            }
+
+            // Skip run of zeroes
+            j += index + 1;
+
+            // Run of -1
+            for _ in 0..=index {
+                if j >= length {
+                    break 'calculation;
+                }
+                digit -= digits[j] as i32;
+                j += 1;
+            }
+
+            // Skip run of zeroes
+            j += index + 1;
+        }
+        
+        output.push((digit.abs() % 10) as u8);
     }
 
     output
